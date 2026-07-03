@@ -130,7 +130,7 @@
     width: 0%;
     background: linear-gradient(90deg, #3B6E5C, #6E9B87);
     border-radius: 6px;
-    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* [수정] 상단 바 부드럽게 */
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .attendance-grid {
     display: flex;
@@ -263,6 +263,26 @@
     gap: 6px;
     white-space: nowrap;
   }
+  
+  /* 버튼 가독성 및 터치 영역 최적화 */
+  .cnt-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid #DDD6C3;
+    background: #FFFFFF;
+    font-size: 14px;
+    font-weight: 700;
+    color: #5a5a4e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cnt-btn:active {
+    background: #F0EDE2;
+  }
+
   .task-count {
     font-size: 13px;
     font-weight: 800;
@@ -271,6 +291,8 @@
     background: #EFEFEF;
     padding: 4px 8px;
     border-radius: 6px;
+    min-width: 45px;
+    text-align: center;
   }
   .del-task-btn {
     background: none;
@@ -279,10 +301,12 @@
     font-size: 16px;
     cursor: pointer;
     padding: 0 4px;
+    margin-left: 4px;
   }
 
-  /* [수정] 슬라이더 게이지 부드러운 전환 추가 */
+  /* 슬라이더 스타일 */
   .slider-wrapper {
+    margin-top: 4px;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
@@ -295,11 +319,9 @@
     outline: none;
     cursor: pointer;
     background-size: 100% 100%;
-    /* 배경 그라데이션이 바뀔 때 스르륵 변하도록 트랜지션 추가 */
     transition: background 0.15s ease-out; 
-    touch-action: none; /* 모바일 웹뷰에서 스크롤 간섭 방지 (더 부드러운 드래그) */
+    touch-action: none;
   }
-  /* 드래그 원형 손잡이 디자인 및 모바일 터치 최적화 */
   .task-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -307,13 +329,13 @@
     height: 20px;
     border-radius: 50%;
     background: #ffffff;
-    border: 3px solid #3B6E5C; /* 스크립트에서 동적으로 색상 지정됨 */
+    border: 3px solid #3B6E5C;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.15);
     transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   .task-slider::-webkit-slider-thumb:active {
-    transform: scale(1.3); /* 누르고 있을 때 손잡이가 살짝 커져서 조작감 상승 */
+    transform: scale(1.3);
   }
   
   .add-btn-inline {
@@ -409,8 +431,9 @@
     </div>
   </div>
 
+  <!-- [수정] 문구 변경: 매일 앉았나요? -> 매일 공부했나요? -->
   <div class="card">
-    <div class="progress-title" style="margin-bottom: 10px;">매일 앉았나요? (출석 체크)</div>
+    <div class="progress-title" style="margin-bottom: 10px;">매일 공부했나요?</div>
     <div class="attendance-grid" id="attendance-box"></div>
   </div>
 
@@ -552,7 +575,7 @@ function render() {
       const isComplete = task.done >= task.target;
       const pct = task.target > 0 ? (task.done / task.target) * 100 : 0;
 
-      // [수정] 부드러운 컬러링과 손잡이(Thumb) 외곽선 색상을 인라인 태그 스타일을 통해 매칭
+      // [수정] 원래 있었던 -, + 터치 버튼을 슬라이더 양옆으로 재결합 연동
       subTasksHtml += `
         <div class="sub-task" style="border-left: 4px solid ${group.color}; opacity: ${isComplete ? 0.75 : 1};">
           <style>
@@ -564,9 +587,11 @@ function render() {
               <button class="edit-icon-btn" onclick="editGoalText(${gIdx}, ${tIdx})">✏️</button>
             </div>
             <div class="task-right-side">
+              <button class="cnt-btn" onclick="changeCountStep(${gIdx}, ${tIdx}, -1, '${group.color}')">-</button>
               <div class="task-count" id="count-text-${gIdx}-${tIdx}" onclick="editTarget(${gIdx}, ${tIdx})" title="최대 목표치 변경">
                 ${task.done}/${task.target}
               </div>
+              <button class="cnt-btn" onclick="changeCountStep(${gIdx}, ${tIdx}, 1, '${group.color}')">+</button>
               <button class="del-task-btn" onclick="deleteSubTask(${gIdx}, ${tIdx})">×</button>
             </div>
           </div>
@@ -614,7 +639,24 @@ function render() {
   saveData();
 }
 
-// [수정] 드래그 중 화면 전체가 깜빡이거나 툭툭 끊기지 않도록 실시간 값 분리 및 부드러운 업데이트 가공
+// [신규] 터치 버튼(+, -)을 누를 때 슬라이더와 숫자가 함께 부드럽게 연동되도록 처리하는 함수
+function changeCountStep(gIdx, tIdx, delta, color) {
+  const current = getWeekData();
+  const task = current.groups[gIdx].subTasks[tIdx];
+  let newVal = task.done + delta;
+  
+  if (newVal < 0) newVal = 0;
+  if (newVal > task.target) newVal = task.target;
+  
+  // input range 요소의 value를 실시간으로 맞추고 이벤트 가동
+  const slider = document.getElementById(`slider-${gIdx}-${tIdx}`);
+  if (slider) {
+    slider.value = newVal;
+    handleSliderInput(gIdx, tIdx, newVal, color);
+  }
+}
+
+// 슬라이더 조절 혹은 버튼 연동 실시간 드래그 가공
 function handleSliderInput(gIdx, tIdx, val, color) {
   const current = getWeekData();
   const task = current.groups[gIdx].subTasks[tIdx];
@@ -622,15 +664,17 @@ function handleSliderInput(gIdx, tIdx, val, color) {
   
   task.done = parsedVal;
   
-  // 1. 카운트 텍스트 즉시 변경
+  // 1. 카운트 텍스트 실시간 반영
   document.getElementById(`count-text-${gIdx}-${tIdx}`).innerText = `${parsedVal}/${task.target}`;
   
-  // 2. 슬라이더 배경색 부드럽게 실시간 밀어주기
+  // 2. 슬라이더 배경색 연동
   const pct = task.target > 0 ? (parsedVal / task.target) * 100 : 0;
   const slider = document.getElementById(`slider-${gIdx}-${tIdx}`);
-  slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #EEE9DC ${pct}%, #EEE9DC 100%)`;
+  if (slider) {
+    slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #EEE9DC ${pct}%, #EEE9DC 100%)`;
+  }
 
-  // 3. 전체 달성률 연산 (딜레이 최소화용 실시간 계산)
+  // 3. 상단 진행 바 연산 실시간 업데이트
   let totalTarget = 0;
   let totalDone = 0;
   current.groups.forEach(g => {
@@ -643,7 +687,6 @@ function handleSliderInput(gIdx, tIdx, val, color) {
   document.getElementById("overall-pct").innerText = `${overallPct}%`;
   document.getElementById("overall-bar").style.width = `${overallPct}%`;
 
-  // 내부 저장 데이터 동기화
   saveData();
 }
 
