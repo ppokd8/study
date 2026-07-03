@@ -155,7 +155,6 @@
     color: #fff;
   }
   
-  /* 과목 그룹 디자인 수정 */
   .subject-group {
     background: #FFFFFF;
     border-radius: 16px;
@@ -176,20 +175,25 @@
     align-items: center;
     gap: 8px;
   }
-  /* [수정] 색상 변경이 가능함을 시각적으로 보여주는 래퍼 */
-  .subject-title-picker-wrapper {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-  }
   .group-title {
     font-size: 15px;
     font-weight: 800;
+    cursor: pointer;
   }
-  /* 투명 컬러 인풋을 글자 위에 덮어씌움 */
-  .subject-title-picker-wrapper input[type="color"] {
+  
+  /* [수정] 컬러 피커 전용 독립 버튼 스타일 */
+  .color-picker-btn {
+    position: relative;
+    display: inline-block;
+    font-size: 12px;
+    background: #F0EDE2;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #5a5a4e;
+    cursor: pointer;
+  }
+  .color-picker-btn input[type="color"] {
     position: absolute;
     top: 0;
     left: 0;
@@ -198,6 +202,7 @@
     opacity: 0;
     cursor: pointer;
   }
+
   .group-time {
     font-size: 12px;
     font-weight: 700;
@@ -568,13 +573,16 @@ function render() {
       `;
     });
 
-    // [수정] 과목명 영역을 클릭하면 컬러 선택 창이 투명하게 열리도록 매핑
+    // [구조 완전히 분리] 과목 텍스트는 클릭 시 이름 수정 / 🎨 색상 버튼은 따로 독립 배치
     groupsHtml += `
       <div class="subject-group">
         <div class="group-header">
           <div class="group-title-side">
-            <div class="subject-title-picker-wrapper" title="과목 이름 및 색상 변경">
-              <div class="group-title" style="color: ${group.color};">${group.subject} ✏️</div>
+            <div class="group-title" style="color: ${group.color};" onclick="editSubjectName(${gIdx})" title="이름 바꾸기">
+              ${group.subject} ✏️
+            </div>
+            <div class="color-picker-btn" title="색상 바꾸기">
+              🎨 색상
               <input type="color" value="${group.color}" onchange="changeSubjectColor(${gIdx}, this.value)">
             </div>
             <div class="group-time" onclick="editSubjectTime(${gIdx})" title="공부 시간 수정">⏱️ ${formatMinutesToHMS(group.minutes)}</div>
@@ -600,7 +608,6 @@ function render() {
   saveData();
 }
 
-// [신규 함수] 색상 변경 실시간 처리
 function changeSubjectColor(gIdx, newColor) {
   const current = getWeekData();
   current.groups[gIdx].color = newColor;
@@ -640,7 +647,6 @@ function changeWeek(delta) {
   render();
 }
 
-// [수정] 과목명 클릭 시 텍스트 프롬프트 창만 깔끔하게 연결
 function editSubjectName(gIdx) {
   const current = getWeekData();
   const v = prompt("과목 이름을 수정하세요:", current.groups[gIdx].subject);
@@ -648,23 +654,6 @@ function editSubjectName(gIdx) {
   current.groups[gIdx].subject = v.trim();
   render();
 }
-
-// 텍스트 프롬프트를 원하면 기존 타이틀 더블클릭이나 롱터치 대신 직관적으로 수정 창을 열 수 있게 우회 제공
-// 사용자가 과목 텍스트 자체를 길게 바꿔야 할 수 있으므로 통합 창으로 제공
-document.addEventListener('dblclick', function(e) {
-  // 사용성 편의를 위해 과목명을 더블클릭해도 텍스트 변경이 가능하게 히든 매핑 유지
-  if(e.target.classList.contains('group-title')) {
-    const wrappers = Array.from(document.querySelectorAll('.subject-title-picker-wrapper'));
-    const idx = wrappers.findIndex(w => w.contains(e.target));
-    if(idx !== -1) {
-      const current = getWeekData();
-      const v = prompt("과목 이름을 수정하세요:", current.groups[idx].subject);
-      if (v === null || !v.trim()) return;
-      current.groups[idx].subject = v.trim();
-      render();
-    }
-  }
-});
 
 function editGoalText(gIdx, tIdx) {
   const current = getWeekData();
