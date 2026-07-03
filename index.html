@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>수능 주간 플래너</title>
+<title>주간 개인 맞춤 플래너</title>
 <style>
   * {
     margin: 0;
@@ -33,16 +33,30 @@
     font-weight: 800;
     margin: 0;
     letter-spacing: -0.02em;
+    cursor: pointer;
   }
   .week-indicator {
     font-size: 13px;
     color: #8a8a7a;
     font-weight: 500;
   }
+  .sub-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2px;
+  }
   .sub-title {
     font-size: 13px;
     color: #8a8a7a;
-    margin-top: 2px;
+  }
+  .total-time-display {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3B6E5C;
+    background: #EAE3D2;
+    padding: 2px 6px;
+    border-radius: 6px;
   }
   .card {
     background: #FFFFFF;
@@ -140,9 +154,23 @@
     padding-bottom: 6px;
     border-bottom: 2px solid #F6F3EC;
   }
+  .group-title-side {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .group-title {
     font-size: 15px;
     font-weight: 800;
+    cursor: pointer;
+  }
+  .group-time {
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    background: #F0EDE2;
+    padding: 2px 6px;
+    border-radius: 4px;
     cursor: pointer;
   }
   .del-group-btn {
@@ -305,6 +333,11 @@
     cursor: pointer;
     text-decoration: underline;
   }
+  
+  /* 숨겨진 날짜 선택 input용 */
+  #target-date-picker {
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -312,10 +345,15 @@
 <div class="container">
   <div class="header">
     <div class="header-top">
-      <h1 id="dday-display">D-138</h1>
+      <!-- 디데이를 누르면 날짜 변경 피커가 작동하도록 바인딩 -->
+      <h1 id="dday-display" onclick="triggerDatePicker()" title="목표 날짜 바꾸기">D-138 ✏️</h1>
+      <input type="date" id="target-date-picker" onchange="saveTargetDate(this.value)">
       <div class="week-indicator" id="week-display">1주차</div>
     </div>
-    <div class="sub-title">수능까지 · 이번 주 학습 트래커</div>
+    <div class="sub-title-row">
+      <div class="sub-title">나만의 커스텀 주간 트래커</div>
+      <div class="total-time-display">총 공부 시간: <span id="total-time-sum">00:00:00</span></div>
+    </div>
   </div>
 
   <div class="nav-box">
@@ -358,24 +396,23 @@
 </div>
 
 <script>
-const WEEK_START_DDAY = 138;
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
-// 초기 기본 구조 (단위 제외)
+// 디폴트 초기 과목 구조 (시간 보관용 minutes 키 추가됨)
 const INITIAL_DATA_STRUCTURE = [
   {
-    subject: "수학", color: "#3B6E5C",
+    subject: "수학", color: "#3B6E5C", minutes: 0,
     subTasks: [{ id: "math-" + Date.now(), goal: "개념강의 5강 + 개념문제 100제", target: 105, done: 0 }]
   },
   {
-    subject: "국어", color: "#8B5A3C",
+    subject: "국어", color: "#8B5A3C", minutes: 0,
     subTasks: [
       { id: "kor-1-" + Date.now(), goal: "화법+작문 개념 정리 완강", target: 8, done: 0 },
       { id: "kor-2-" + Date.now(), goal: "문학 5지문 + 비문학 3지문", target: 8, done: 0 }
     ]
   },
   {
-    subject: "영어", color: "#3C5A8B",
+    subject: "영어", color: "#3C5A8B", minutes: 0,
     subTasks: [
       { id: "eng-1-" + Date.now(), goal: "단어 300개 (하루 50개×6일)", target: 6, done: 0 },
       { id: "eng-2-" + Date.now(), goal: "구문독해 3회", target: 3, done: 0 }
@@ -387,28 +424,65 @@ const COLORS = ["#3B6E5C", "#8B5A3C", "#3C5A8B", "#6E4A8B", "#8B7A3C", "#5C5C5C"
 
 let weekOffset = 0;
 let globalData = {};
+let targetDateStr = ""; 
+
+// 분(Minutes) 단위를 "00:00:00" 포맷 문자열로 바꿔주는 헬퍼 기능
+function formatMinutesToHMS(totalMinutes) {
+  if (!totalMinutes || totalMinutes < 0) return "00:00:00";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  const hStr = String(hours).padStart(2, '0');
+  const mStr = String(minutes).padStart(2, '0');
+  return `${hStr}:${mStr}:00`;
+}
 
 function loadData() {
-  const saved = localStorage.getItem("customWeeklyTrackerV5");
+  const saved = localStorage.getItem("customWeeklyTrackerV6");
   if (saved) {
     try { globalData = JSON.parse(saved); } catch(e) { globalData = {}; }
+  }
+  
+  // 타겟 목표 날짜 로드 (없으면 기본 수능 날짜 기준 시뮬레이션용 세팅)
+  const savedDate = localStorage.getItem("customWeeklyTracker_TargetDate");
+  if (savedDate) {
+    targetDateStr = savedDate;
+  } else {
+    // 기본 디폴트 날짜 세팅 (오늘로부터 대략 138일 뒤)
+    const d = new Date();
+    d.setDate(d.getDate() + 138);
+    targetDateStr = d.toISOString().split('T')[0];
   }
 }
 
 function saveData() {
-  localStorage.setItem("customWeeklyTrackerV5", JSON.stringify(globalData));
+  localStorage.setItem("customWeeklyTrackerV6", JSON.stringify(globalData));
+}
+
+// 디데이 계산 바인딩 숨겨진 인풋 작동
+function triggerDatePicker() {
+  document.getElementById("target-date-picker").showPicker();
+}
+
+function saveTargetDate(val) {
+  if(!val) return;
+  targetDateStr = val;
+  localStorage.setItem("customWeeklyTracker_TargetDate", val);
+  render();
 }
 
 function getWeekData() {
   const key = `week-${weekOffset}`;
   if (!globalData[key]) {
-    // 하위 호환성 체크 (구버전에서 연동)
-    const oldSaved = localStorage.getItem("customWeeklyTrackerV4") || localStorage.getItem("customWeeklyTrackerV3");
+    // 하위 호환 마이그레이션 및 기본값 세팅
+    const oldSaved = localStorage.getItem("customWeeklyTrackerV5") || localStorage.getItem("customWeeklyTrackerV4");
     if (oldSaved) {
       try {
         const oldData = JSON.parse(oldSaved);
         if (oldData[key]) {
           globalData[key] = oldData[key];
+          // 예전 버전에 minutes 데이터가 누락되어 있다면 초기화
+          globalData[key].groups.forEach(g => { if(g.minutes === undefined) g.minutes = 0; });
           return globalData[key];
         }
       } catch(e){}
@@ -424,13 +498,29 @@ function getWeekData() {
 
 function render() {
   const current = getWeekData();
-  const dDayStart = WEEK_START_DDAY - (weekOffset * 7);
   
-  document.getElementById("dday-display").innerText = `D-${dDayStart}`;
+  // 1. D-Day 계산 알고리즘 수행
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const target = new Date(targetDateStr);
+  target.setHours(0,0,0,0);
+  
+  const diffTime = target.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // 주간 단위 이동 보정 반영
+  const currentDDay = diffDays - (weekOffset * 7);
+  
+  if (currentDDay >= 0) {
+    document.getElementById("dday-display").innerText = `D-${currentDDay} ✏️`;
+  } else {
+    document.getElementById("dday-display").innerText = `D+${Math.abs(currentDDay)} ✏️`;
+  }
+  
   document.getElementById("week-display").innerText = `${weekOffset + 1}주차`;
   document.getElementById("prev-btn").disabled = (weekOffset === 0);
 
-  // 1. 출석체크 렌더링
+  // 2. 출석체크 리스트업
   let attHtml = "";
   DAYS.forEach((day, i) => {
     const isChecked = !!current.dailyCheck[`d${i}`];
@@ -438,13 +528,16 @@ function render() {
   });
   document.getElementById("attendance-box").innerHTML = attHtml;
 
-  // 2. 과목 그룹 및 세부 목표 렌더링
+  // 3. 과목 및 진행률 렌더링
   let groupsHtml = "";
   let totalTarget = 0;
   let totalDone = 0;
+  let weeklyTotalMinutes = 0; // 이번 주 총 공부시간 계산용 변수
 
   current.groups.forEach((group, gIdx) => {
     let subTasksHtml = "";
+    if (group.minutes === undefined) group.minutes = 0;
+    weeklyTotalMinutes += group.minutes;
     
     group.subTasks.forEach((task, tIdx) => {
       totalTarget += task.target;
@@ -461,7 +554,7 @@ function render() {
               <button class="edit-icon-btn" onclick="editGoalText(${gIdx}, ${tIdx})">✏️</button>
             </div>
             <div class="task-right-side">
-              <div class="task-count" onclick="editTarget(${gIdx}, ${tIdx})" title="목표 숫자 변경">
+              <div class="task-count" onclick="editTarget(${gIdx}, ${tIdx})" title="목표 변경">
                 ${task.done}/${task.target}
               </div>
               <button class="del-task-btn" onclick="deleteSubTask(${gIdx}, ${tIdx})">×</button>
@@ -481,7 +574,11 @@ function render() {
     groupsHtml += `
       <div class="subject-group">
         <div class="group-header">
-          <div class="group-title" style="color: ${group.color};" onclick="editSubjectName(${gIdx})">${group.subject} ✏️</div>
+          <div class="group-title-side">
+            <div class="group-title" style="color: ${group.color};" onclick="editSubjectName(${gIdx})">${group.subject} ✏️</div>
+            <!-- 공부 시간 박스 표시 영역 -->
+            <div class="group-time" onclick="editSubjectTime(${gIdx})" title="공부 시간 수정">⏱️ ${formatMinutesToHMS(group.minutes)}</div>
+          </div>
           <button class="del-group-btn" onclick="deleteSubjectGroup(${gIdx})">과목삭제</button>
         </div>
         <div>
@@ -494,15 +591,37 @@ function render() {
   
   document.getElementById("subject-groups-box").innerHTML = groupsHtml;
 
-  // 전체 진행률 업데이트
+  // 전체 통계 대시보드 갱신
   const overallPct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
   document.getElementById("overall-pct").innerText = `${overallPct}%`;
   document.getElementById("overall-bar").style.width = `${overallPct}%`;
+  
+  // 상단 공부 시간의 누적 합 계산 출력 반영
+  document.getElementById("total-time-sum").innerText = formatMinutesToHMS(weeklyTotalMinutes);
 
   saveData();
 }
 
-// 수량 변경 (+1, -1)
+// 과목별 개별 공부 시간 수동 입력
+function editSubjectTime(gIdx) {
+  const current = getWeekData();
+  const group = current.groups[gIdx];
+  if(group.minutes === undefined) group.minutes = 0;
+  
+  const val = prompt(`[${group.subject}]의 이번 주 총 공부 시간을 입력해 주세요 (분 단위 숫자만):`, group.minutes);
+  if (val === null) return;
+  
+  const parsed = parseInt(val, 10);
+  if (isNaN(parsed) || parsed < 0) {
+    alert("0 이상의 올바른 숫자를 분 단위로 기입해 주세요.");
+    return;
+  }
+  
+  group.minutes = parsed;
+  render();
+}
+
+// 수량 업데이트 처리
 function updateProgress(gIdx, tIdx, delta) {
   const current = getWeekData();
   const task = current.groups[gIdx].subTasks[tIdx];
@@ -510,7 +629,7 @@ function updateProgress(gIdx, tIdx, delta) {
   render();
 }
 
-// 출석 토글
+// 출석 연동
 function toggleDay(dayIdx) {
   const current = getWeekData();
   const key = `d${dayIdx}`;
@@ -518,95 +637,79 @@ function toggleDay(dayIdx) {
   render();
 }
 
-// 주차 이동
+// 주간 이동 처리
 function changeWeek(delta) {
   weekOffset = Math.max(0, weekOffset + delta);
   toggleExport(false);
   render();
 }
 
-// 1. 과목 이름 수정
+// 과목 타이틀 핸들링
 function editSubjectName(gIdx) {
   const current = getWeekData();
   const v = prompt("과목 이름을 수정하세요:", current.groups[gIdx].subject);
   if (v === null) return;
-  if (!v.trim()) {
-    alert("내용을 입력해주세요.");
-    return;
-  }
+  if (!v.trim()) return;
   current.groups[gIdx].subject = v.trim();
   render();
 }
 
-// 2. 세부 목표 글씨 수정
+// 세부 태스크 변경 핸들러
 function editGoalText(gIdx, tIdx) {
   const current = getWeekData();
   const task = current.groups[gIdx].subTasks[tIdx];
   const v = prompt("공부 목표 내용을 수정하세요:", task.goal);
   if (v === null) return;
-  if (!v.trim()) {
-    alert("내용을 입력해주세요.");
-    return;
-  }
+  if (!v.trim()) return;
   task.goal = v.trim();
   render();
 }
 
-// 3. 목표 수량만 깔끔하게 수정 (단위 팝업 제거)
 function editTarget(gIdx, tIdx) {
   const current = getWeekData();
   const task = current.groups[gIdx].subTasks[tIdx];
   
-  const numVal = prompt("목표 수량을 입력하세요 (숫자만):", task.target);
+  const numVal = prompt("목표 수량을 입력하세요:", task.target);
   if (numVal === null) return;
   const num = parseInt(numVal, 10);
-  if (isNaN(num) || num <= 0) {
-    alert("올바른 숫자를 입력해주세요.");
-    return;
-  }
+  if (isNaN(num) || num <= 0) return;
 
   task.target = num;
   if (task.done > task.target) task.done = task.target;
-  
   render();
 }
 
-// 4. 새 과목 그룹 추가
 function addSubjectGroup() {
   const current = getWeekData();
-  const name = prompt("새로 추가할 과목명을 입력하세요 (예: 사문, 물화, 생글):");
+  const name = prompt("새로 추가할 과목명을 입력하세요:");
   if (!name || !name.trim()) return;
 
   const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
   current.groups.push({
     subject: name.trim(),
     color: randomColor,
+    minutes: 0,
     subTasks: []
   });
   render();
 }
 
-// 5. 과목 통째로 삭제
 function deleteSubjectGroup(gIdx) {
   const current = getWeekData();
-  if (confirm(`[${current.groups[gIdx].subject}] 과목과 안의 모든 목표가 삭제됩니다. 정말 삭제할까요?`)) {
+  if (confirm(`[${current.groups[gIdx].subject}] 과목이 삭제됩니다. 정말 삭제할까요?`)) {
     current.groups.splice(gIdx, 1);
     render();
   }
 }
 
-// 6. 특정 과목 안에 세부 목표 추가 (단위 입력 단계 스킵)
 function addSubTask(gIdx) {
   const current = getWeekData();
   const goal = prompt("세부 공부 목표를 입력하세요:");
   if (!goal || !goal.trim()) return;
   
-  const targetVal = prompt("목표 수량을 입력하세요 (숫자만):", "5");
+  const targetVal = prompt("목표 수량을 입력하세요:", "5");
   const target = parseInt(targetVal, 10);
-  if (isNaN(target) || target <= 0) {
-    alert("올바른 숫자를 입력해주세요.");
-    return;
-  }
+  if (isNaN(target) || target <= 0) return;
 
   current.groups[gIdx].subTasks.push({
     id: "task-" + Date.now() + Math.random(),
@@ -617,7 +720,6 @@ function addSubTask(gIdx) {
   render();
 }
 
-// 7. 세부 목표만 골라서 삭제
 function deleteSubTask(gIdx, tIdx) {
   const current = getWeekData();
   if (confirm("이 목표를 삭제하시겠습니까?")) {
@@ -626,16 +728,16 @@ function deleteSubTask(gIdx, tIdx) {
   }
 }
 
-/* --- 데이터 출력 및 리셋 --- */
+/* --- 데이터 복사 내보내기 --- */
 function generateExportText() {
   const current = getWeekData();
-  const dDayStart = WEEK_START_DDAY - (weekOffset * 7);
-  
-  let totalTarget = 0; let totalDone = 0;
-  const lines = [`D-${dDayStart} (${weekOffset + 1}주차) 수능 플래너 기록`, ""];
+  let totalTarget = 0; let totalDone = 0; let totalMin = 0;
+  const lines = [`[내 맞춤형 주간 플래너 기록 - ${weekOffset + 1}주차]`, `목표일 기준 남은 일정 계산 완료`, ""];
   
   current.groups.forEach((group) => {
-    lines.push(`■ ${group.subject}`);
+    const minVal = group.minutes || 0;
+    totalMin += minVal;
+    lines.push(`■ ${group.subject} (공부 시간: ${formatMinutesToHMS(minVal)})`);
     group.subTasks.forEach((t) => {
       totalTarget += t.target; totalDone += t.done;
       lines.push(` - ${t.goal}: ${t.done}/${t.target}`);
@@ -647,7 +749,8 @@ function generateExportText() {
   
   lines.push("");
   lines.push(`출석 요일: ${checkedDays.length > 0 ? checkedDays.join(", ") : "없음"}`);
-  lines.push(`주간 총 진행률: ${overallPct}%`);
+  lines.push(`주간 총 공부 시간: ${formatMinutesToHMS(totalMin)}`);
+  lines.push(`주간 목표 달성률: ${overallPct}%`);
   return lines.join("\n");
 }
 
@@ -671,7 +774,7 @@ function confirmReset(ask) {
   if (ask) {
     area.innerHTML = `
       <div style="font-size: 12px; color: #a04a3c;">
-        정말 이번 주 기록을 비울까요? (커스텀 설정도 초기화됩니다) 
+        정말 이번 주 기록을 초기화할까요?
         <button class="link-btn" style="color: #a04a3c; font-weight: 700;" onclick="resetWeek()">네</button> / 
         <button class="link-btn" onclick="confirmReset(false)">아니오</button>
       </div>
@@ -691,7 +794,6 @@ function resetWeek() {
   render();
 }
 
-// 데이터 연동 및 구동
 loadData();
 render();
 </script>
