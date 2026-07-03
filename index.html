@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수능 주간 플래너</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  body {
+    background: #F6F3EC;
+    padding: 24px 16px 60px;
+    color: #2B2B26;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .header {
+    margin-bottom: 16px;
+  }
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .header-top h1 {
+    font-size: 26px;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .week-indicator {
+    font-size: 13px;
+    color: #8a8a7a;
+    font-weight: 500;
+  }
+  .sub-title {
+    font-size: 13px;
+    color: #8a8a7a;
+    margin-top: 2px;
+  }
+  .card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    border: 1px solid #E8E3D8;
+  }
+  .nav-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .nav-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 10px;
+    border: 1px solid #DDD6C3;
+    background: #FCFAF3;
+    color: #5a5a4e;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .nav-btn:disabled {
+    background: #F0EDE2;
+    color: #c0bcac;
+    cursor: default;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .progress-title {
+    font-size: 13px;
+    fontWeight: 600;
+    color: #5a5a4e;
+  }
+  .progress-pct {
+    font-size: 18px;
+    font-weight: 800;
+    color: #3B6E5C;
+  }
+  .progress-bar-bg {
+    height: 10, background: #EEE9DC;
+    height: 10px;
+    background: #EEE9DC;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3B6E5C, #6E9B87);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+  }
+  .attendance-grid {
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+  }
+  .day-btn {
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 1.5px solid #DDD6C3;
+    background: #FCFAF3;
+    color: #8a8a7a;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .day-btn.checked {
+    border: none;
+    background: #3B6E5C;
+    color: #fff;
+  }
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .task-card {
+    background: #FFFFFF;
+    border-radius: 14px;
+    padding: 14px 16px;
+    border: 1px solid #E8E3D8;
+    transition: all 0.2s;
+  }
+  .task-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .task-subject {
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .task-goal {
+    font-size: 12px;
+    color: #8a8a7a;
+    margin-top: 2px;
+  }
+  .task-count {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2B2B26;
+    whiteSpace: nowrap;
+    cursor: pointer;
+  }
+  .task-unit {
+    font-size: 11px;
+    color: #a0a090;
+    font-weight: 500;
+  }
+  .task-bar-bg {
+    height: 6px;
+    background: #EEE9DC;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .task-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+  }
+  .step-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #DDD6C3;
+    background: #FCFAF3;
+    color: #5a5a4e;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .export-btn {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: 10px;
+    border: none;
+    background: #2B2B26;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .export-box {
+    background: #FFFFFF;
+    border: 1px solid #E8E3D8;
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 20px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    font-size: 12px;
+    font-family: monospace;
+    border: 1px solid #EEE9DC;
+    border-radius: 8px;
+    padding: 10px;
+    resize: none;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: #a0a090;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-top">
+      <h1 id="dday-display">D-138</h1>
+      <div class="week-indicator" id="week-display">1주차</div>
+    </div>
+    <div class="sub-title">수능까지 · 이번 주 학습 트래커</div>
+  </div>
+
+  <div class="nav-box">
+    <button class="nav-btn" id="prev-btn" onclick="changeWeek(-1)">← 이전 주</button>
+    <button class="nav-btn" id="next-btn" onclick="changeWeek(1)">다음 주 →</button>
+  </div>
+
+  <!-- 전체 진행률 카드 -->
+  <div class="card">
+    <div class="progress-header">
+      <span class="progress-title">이번 주 전체 진행률</span>
+      <span class="progress-pct" id="overall-pct">0%</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="overall-bar"></div>
+    </div>
+  </div>
+
+  <!-- 출석 체크 카드 -->
+  <div class="card">
+    <div class="progress-title" style="margin-bottom: 10px;">매일 앉았나요? (출석 체크)</div>
+    <div class="attendance-grid" id="attendance-box"></div>
+  </div>
+
+  <!-- 과목 리스트 -->
+  <div class="task-list" id="task-list-box"></div>
+
+  <!-- 내보내기 영역 -->
+  <div id="export-area">
+    <button class="export-btn" onclick="toggleExport(true)">📋 기록 내보내기 (텍스트로 복사)</button>
+  </div>
+
+  <!-- 초기화 영역 -->
+  <div style="margin-top: 20px; text-align: center;" id="reset-area">
+    <button class="link-btn" onclick="confirmReset(true)">이번 주 기록 초기화</button>
+  </div>
+</div>
+
+<script>
+const WEEK_START_DDAY = 138;
+const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
+const INITIAL_TASKS = [
+  { id: "math", subject: "수학", goal: "개념강의 5강 + 개념문제 100제", unit: "개", target: 105, color: "#3B6E5C" },
+  { id: "kor-hwajak", subject: "국어 · 화작", goal: "화법+작문 개념 정리 완강", unit: "강", target: 8, color: "#8B5A3C" },
+  { id: "kor-susteuk", subject: "국어 · 수특", goal: "문학 5지문 + 비문학 3지문", unit: "지문", target: 8, color: "#8B5A3C" },
+  { id: "eng-word", subject: "영어 · 단어", goal: "300개 (하루 50개×6일)", unit: "회", target: 6, color: "#3C5A8B" },
+  { id: "eng-gumun", subject: "영어 · 구문독해", goal: "3회", unit: "회", target: 3, color: "#3C5A8B" },
+  { id: "sammun", subject: "사문", goal: "개념 1~2단원", unit: "단원", target: 2, color: "#6E4A8B" },
+  { id: "hanji", subject: "한지", goal: "개념 1단원 복습", unit: "단원", target: 1, color: "#6E4A8B" },
+  { id: "hangug", subject: "한국사", goal: "주 2회, 기출 1회분씩", unit: "회", target: 2, color: "#8B7A3C" },
+  { id: "hanguggeom", subject: "한능검", goal: "일요일 1~2시간", unit: "회", target: 1, color: "#5C5C5C" },
+];
+
+let weekOffset = 0;
+let weekData = {};
+
+// LocalStorage에서 데이터를 안전하게 불러오는 함수
+function loadData() {
+  const saved = localStorage.getItem("weeklyStudyTrackerData");
+  if (saved) {
+    try { weekData = JSON.parse(saved); } catch(e) { weekData = {}; }
+  }
+}
+
+// LocalStorage에 데이터를 저장하는 함수
+function saveData() {
+  localStorage.setItem("weeklyStudyTrackerData", JSON.stringify(weekData));
+}
+
+// 현재 주차의 데이터를 가져오거나 초기화하는 함수
+function getWeekData() {
+  const key = `week-${weekOffset}`;
+  if (!weekData[key]) {
+    weekData[key] = {
+      progress: {},
+      dailyCheck: {},
+      tasks: JSON.parse(JSON.stringify(INITIAL_TASKS)) // 깊은 복사
+    };
+  }
+  return weekData[key];
+}
+
+function render() {
+  const current = getWeekData();
+  const dDayStart = WEEK_START_DDAY - (weekOffset * 7);
+  
+  // 헤더 및 내비게이션 바인딩
+  document.getElementById("dday-display").innerText = `D-${dDayStart}`;
+  document.getElementById("week-display").innerText = `${weekOffset + 1}주차`;
+  document.getElementById("prev-btn").disabled = (weekOffset === 0);
+
+  // 1. 출석체크 렌더링
+  let attHtml = "";
+  DAYS.forEach((day, i) => {
+    const isChecked = !!current.dailyCheck[`d${i}`];
+    attHtml += `<button class="day-btn ${isChecked ? 'checked' : ''}" onclick="toggleDay(${i})">${day}</button>`;
+  });
+  document.getElementById("attendance-box").innerHTML = attHtml;
+
+  // 2. 과목 리스트 & 진행률 계산 렌더링
+  let taskHtml = "";
+  let totalTarget = 0;
+  let totalDone = 0;
+
+  current.tasks.forEach((task) => {
+    const done = Math.min(task.target, current.progress[task.id] || 0);
+    totalTarget += task.target;
+    totalDone += done;
+
+    const pct = Math.round((done / task.target) * 100);
+    const isComplete = done >= task.target;
+
+    taskHtml += `
+      <div class="task-card" style="border-color: ${isComplete ? task.color : '#E8E3D8'}; opacity: ${isComplete ? 0.85 : 1};">
+        <div class="task-top">
+          <div>
+            <div class="task-subject" style="color: ${task.color};">
+              ${task.subject} ${isComplete ? '✓' : ''}
+            </div>
+            <div class="task-goal">${task.goal}</div>
+          </div>
+          <div class="task-count" onclick="editTarget('${task.id}')">
+            ${done}/${task.target} <span class="task-unit">${task.unit} ✎</span>
+          </div>
+        </div>
+        <div class="task-bar-bg">
+          <div class="task-bar-fill" style="width: ${pct}%; background: ${task.color};"></div>
+        </div>
+        <div class="btn-row">
+          <button class="step-btn" onclick="updateProgress('${task.id}', -1)">−</button>
+          <button class="step-btn" style="background: ${task.color}; color: #fff; border: none;" onclick="updateProgress('${task.id}', 1)">+ 완료</button>
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById("task-list-box").innerHTML = taskHtml;
+
+  // 전체 진행률 계산
+  const overallPct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+  document.getElementById("overall-pct").innerText = `${overallPct}%`;
+  document.getElementById("overall-bar").style.width = `${overallPct}%`;
+
+  saveData();
+}
+
+// 진행도 업데이트 (+1, -1)
+function updateProgress(taskId, delta) {
+  const current = getWeekData();
+  const task = current.tasks.find(t => t.id === taskId);
+  const currProgress = current.progress[taskId] || 0;
+  current.progress[taskId] = Math.max(0, Math.min(task.target, currProgress + delta));
+  render();
+}
+
+// 출석 토글
+function toggleDay(dayIdx) {
+  const current = getWeekData();
+  const key = `d${dayIdx}`;
+  current.dailyCheck[key] = !current.dailyCheck[key];
+  render();
+}
+
+// 주차 변경
+function changeWeek(delta) {
+  weekOffset = Math.max(0, weekOffset + delta);
+  toggleExport(false); // 주차 바뀔 때 창 닫기
+  render();
+}
+
+// 목표치 개별 수정
+function editTarget(taskId) {
+  const current = getWeekData();
+  const task = current.tasks.find(t => t.id === taskId);
+  const v = prompt(`${task.subject} 목표 수량을 입력하세요:`, task.target);
+  if (v === null) return;
+  const num = parseInt(v, 10);
+  if (!isNaN(num) && num > 0) {
+    task.target = num;
+    if ((current.progress[taskId] || 0) > task.target) {
+      current.progress[taskId] = task.target;
+    }
+    render();
+  }
+}
+
+// 내보내기 텍스트 생성
+function generateExportText() {
+  const current = getWeekData();
+  const dDayStart = WEEK_START_DDAY - (weekOffset * 7);
+  
+  let totalTarget = 0; let totalDone = 0;
+  const lines = [`D-${dDayStart} (${weekOffset + 1}주차) 학습 기록`, ""];
+  
+  current.tasks.forEach((t) => {
+    const done = Math.min(t.target, current.progress[t.id] || 0);
+    totalTarget += t.target; totalDone += done;
+    lines.push(`${t.subject}: ${done}/${t.target} ${t.unit} (${t.goal})`);
+  });
+  
+  const overallPct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+  const checkedDays = DAYS.filter((_, i) => current.dailyCheck[`d${i}`]);
+  
+  lines.push("");
+  lines.push(`출석: ${checkedDays.length > 0 ? checkedDays.join(", ") : "없음"}`);
+  lines.push(`전체 진행률: ${overallPct}%`);
+  return lines.join("\n");
+}
+
+function toggleExport(show) {
+  const area = document.getElementById("export-area");
+  if (show) {
+    area.innerHTML = `
+      <div class="export-box">
+        <textarea readonly onclick="this.select()">${generateExportText()}</textarea>
+        <div style="font-size: 11px; color: #a0a090; margin-top: 6px;">클릭 후 전체 선택해 복사해서 활용하세요.</div>
+        <button class="link-btn" style="margin-top: 8px;" onclick="toggleExport(false)">닫기</button>
+      </div>
+    `;
+  } else {
+    area.innerHTML = `<button class="export-btn" onclick="toggleExport(true)">📋 기록 내보내기 (텍스트로 복사)</button>`;
+  }
+}
+
+// 초기화 제어
+function confirmReset(ask) {
+  const area = document.getElementById("reset-area");
+  if (ask) {
+    area.innerHTML = `
+      <div style="font-size: 12px; color: #a04a3c;">
+        정말 초기화할까요? 
+        <button class="link-btn" style="color: #a04a3c; font-weight: 700;" onclick="resetWeek()">네</button> / 
+        <button class="link-btn" onclick="confirmReset(false)">아니오</button>
+      </div>
+    `;
+  } else {
+    area.innerHTML = `<button class="link-btn" onclick="confirmReset(true)">이번 주 기록 초기화</button>`;
+  }
+}
+
+function resetWeek() {
+  const key = `week-${weekOffset}`;
+  weekData[key] = {
+    progress: {},
+    dailyCheck: {},
+    tasks: JSON.parse(JSON.stringify(INITIAL_TASKS))
+  };
+  confirmReset(false);
+  render();
+}
+
+// 앱 구동
+loadData();
+render();
+</script>
+</body>
+</html>
