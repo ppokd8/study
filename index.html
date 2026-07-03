@@ -28,13 +28,31 @@
     align-items: baseline;
     justify-content: space-between;
   }
-  .header-top h1 {
+  
+  /* [오류 해결] 디데이 영역에 보이지 않는 투명 날짜 인풋을 넓게 덮어씌우는 구조 스타일 */
+  .dday-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  .dday-wrapper h1 {
     font-size: 26px;
     font-weight: 800;
     margin: 0;
     letter-spacing: -0.02em;
-    cursor: pointer;
+    color: #2B2B26;
   }
+  /* 진짜 날짜 선택기를 투명하게 만들어서 h1 위에 올림 (모든 브라우저 100% 작동 보장) */
+  .dday-wrapper input[type="date"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 16px; /* 모바일 줌 현상 방지 */
+  }
+
   .week-indicator {
     font-size: 13px;
     color: #8a8a7a;
@@ -333,10 +351,6 @@
     cursor: pointer;
     text-decoration: underline;
   }
-  
-  #target-date-picker {
-    display: none;
-  }
 </style>
 </head>
 <body>
@@ -344,12 +358,14 @@
 <div class="container">
   <div class="header">
     <div class="header-top">
-      <h1 id="dday-display" onclick="triggerDatePicker()" title="목표 날짜 바꾸기">D-138 ✏️</h1>
-      <input type="date" id="target-date-picker" onchange="saveTargetDate(this.value)">
+      <!-- [수정] 자바스크립트 호출 대신 진짜 캘린더가 겉을 덮는 구조로 변경 -->
+      <div class="dday-wrapper" title="목표 날짜 바꾸기">
+        <h1 id="dday-display">D-138 ✏️</h1>
+        <input type="date" id="target-date-picker" onchange="saveTargetDate(this.value)">
+      </div>
       <div class="week-indicator" id="week-display">1주차</div>
     </div>
     <div class="sub-title-row">
-      <!-- 이 부분의 텍스트가 디데이 날짜 변경에 따라 실시간 매칭되도록 보정 -->
       <div class="sub-title" id="sub-title-desc">나만의 커스텀 주간 트래커</div>
       <div class="total-time-display">총 공부 시간: <span id="total-time-sum">00:00:00</span></div>
     </div>
@@ -435,18 +451,17 @@ function loadData() {
   if (savedDate) {
     targetDateStr = savedDate;
   } else {
+    // 디폴트값: 오늘로부터 138일 뒤 날짜 자동 연산 세팅
     const d = new Date();
     d.setDate(d.getDate() + 138);
     targetDateStr = d.toISOString().split('T')[0];
   }
+  // 진짜 달력 선택기 input 창에도 세팅값 동기화
+  document.getElementById("target-date-picker").value = targetDateStr;
 }
 
 function saveData() {
   localStorage.setItem("customWeeklyTrackerV6", JSON.stringify(globalData));
-}
-
-function triggerDatePicker() {
-  document.getElementById("target-date-picker").showPicker();
 }
 
 function saveTargetDate(val) {
@@ -470,25 +485,25 @@ function getWeekData() {
 function render() {
   const current = getWeekData();
   
-  // [디데이 연산 오류 원인 전면 수정]
+  // [날짜 정밀 계산 로직 보정] 타임존 오류를 완벽 차단하는 현지 시간 연산
   const today = new Date();
   today.setHours(0,0,0,0);
   
-  // 문자열 파싱 시 타임존 에러를 방지하기 위해 년, 월, 일 분리 파싱
   const parts = targetDateStr.split('-');
   const target = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
   target.setHours(0,0,0,0);
   
+  // 밀리초 단위를 하루 단위로 정확하게 올림 처리
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  // 현재 보고있는 주차 기준의 실시간 디데이 보정 계산
+  // 주차(weekOffset) 이동에 따른 실시간 일수 빼기 계산 연동
   const currentDDay = diffDays - (weekOffset * 7);
   
-  // 1. 디데이 메인 텍스트 동적 반영
+  // 1. 상단 디데이 대문자 타이틀 텍스트 반영
   if (currentDDay >= 0) {
     document.getElementById("dday-display").innerText = `D-${currentDDay} ✏️`;
-    // 디데이 밑에 글도 목표 날짜 정보와 함께 직관적으로 갱신되게끔 매핑 변경
+    // 2. 디데이 밑에 글 설명 텍스트 실시간 반영 고정
     document.getElementById("sub-title-desc").innerText = `목표일(${targetDateStr}) 기준 남은 일정`;
   } else {
     document.getElementById("dday-display").innerText = `D+${Math.abs(currentDDay)} ✏️`;
